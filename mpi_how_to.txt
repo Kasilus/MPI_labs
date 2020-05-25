@@ -1,0 +1,21 @@
+mpicc -W -Wall -O2 -std=c99 mpi_first.c
+mpicc = Compiles and links MPI programs written in C
+Options starting with -g, -f, -m, -O, -W, or --param are automatically passed
+    on to the various sub-processes invoked by gcc. In order to pass other options
+    on to these processes the -W<letter> options must be used.
+-W = -W is now deprecated by -Wextra with new gcc versions.
+-Wextra
+    This enables some extra warning flags that are not enabled by -Wall.
+    (This option used to be called -W.  The older name is still supported, but
+    the newer name is more descriptive.)
+gcc -Wall enables all compiler's warning messages. This option should always
+    be used, in order to generate better code.
+gcc -O sets the compiler's optimization level.
+-O2	optimization more for code size and execution time.
+-std=c99 invokes C99 compiler
+==
+mpiexec -np 4 ./a.out
+mpiexec - Run an MPI program
+-np = run 4 copies of MPI programs
+./a.out = object file after compilation (assembler output)
+gcc by default produces a.out, if no option -o was established.
