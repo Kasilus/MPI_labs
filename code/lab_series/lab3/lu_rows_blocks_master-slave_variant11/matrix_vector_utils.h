@@ -1,13 +1,13 @@
 struct Vector {
     int size;
-    int* data;
+    double* data;
 };
 
 struct Matrix
 {
     int rows;
     int cols;
-    int **data;
+    double** data;
 };
 
 struct Vector* read_vector(const char* filename);

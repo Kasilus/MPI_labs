@@ -3,14 +3,14 @@
 
 struct Vector {
     int size;
-    int* data;
+    double* data;
 };
 
 struct Matrix
 {
     int rows;
     int cols;
-    int **data;
+    double** data;
 };
 
 struct Vector* read_vector(const char* filename)
@@ -20,11 +20,11 @@ struct Vector* read_vector(const char* filename)
   struct Vector* vector = malloc(sizeof(struct Vector));
 
   fscanf(pf, "%d", &vector->size);
-  vector->data = (int *)malloc(vector->size * sizeof(int *));
+  vector->data = (double *)malloc(vector->size * sizeof(double *));
 
   for(int i = 0; i < vector->size; i++)
   {
-      fscanf(pf, "%d", &vector->data[i]);
+      fscanf(pf, "%lf", &vector->data[i]);
   }
   fclose(pf);
   return vector;
@@ -34,7 +34,7 @@ void print_vector(struct Vector* vector)
 {
   for(int i = 0; i < vector->size; i++)
   {
-    printf("%d  ", vector->data[i]);
+    printf("%lf  ", vector->data[i]);
   }
   printf("\n");
 }
@@ -47,15 +47,15 @@ struct Matrix* read_matrix(const char* filename)
 
   fscanf(pf, "%d", &matrix->rows);
   fscanf(pf, "%d", &matrix->cols);
-  matrix->data = (int **)malloc(matrix->rows * sizeof(int *));
-      for (int i=0; i<matrix->rows; i++)
-           matrix->data[i] = (int *)malloc(matrix->cols * sizeof(int));
+  matrix->data = (double **)malloc(matrix->rows * sizeof(double *));
+  for (int i=0; i<matrix->rows; i++)
+       matrix->data[i] = (double *)malloc(matrix->cols * sizeof(double));
 
   for(int i = 0; i < matrix->rows; i++)
   {
      for(int j = 0; j < matrix->cols; j++)
      {
-         fscanf(pf, "%d", &matrix->data[i][j]);
+         fscanf(pf, "%lf", &matrix->data[i][j]);
      }
   }
   fclose(pf);
@@ -68,7 +68,7 @@ void print_matrix(struct Matrix* matrix)
   {
      for(int j = 0; j < matrix->cols; j++)
      {
-        printf("%d  ", matrix->data[i][j]);
+        printf("%f  ", matrix->data[i][j]);
      }
      printf("\n");
   }
