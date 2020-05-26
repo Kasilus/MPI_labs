@@ -5,37 +5,33 @@
 
 void lu(
     struct Matrix* MA,
-    struct Vector* b,
     double* det)
 {
     double det_inner = 1.0;
-    int N = b->size;
+    int N = MA->cols;
     // move to another method for matrix allocation
-    struct Matrix *l = malloc(sizeof(struct Matrix));
-    l->rows = N;
-    l->cols = N;
-    l->data = (double **)malloc(l->rows * sizeof(double *));
-    for (int i=0; i<l->rows; i++)
-         l->data[i] = (double *)malloc(l->cols * sizeof(double));
-    // fill with 0 TO DELETE
-    for (int i=0; i<l->rows; i++) {
-        for (int j=0; j<l->cols; j++) {
-            l->data[i][j] = 0;
-        }
-    }
-    printf("Matrix l after init\n");
-    print_matrix(l);
+    struct Matrix *l = matrix_alloc(N, N, .0);
     for (int k = 0; k < N - 1; k++)
     {
         for (int i = k + 1; i < N; i++)
         {
             /* L */
+            printf("k, i = %d, %d\n", k, i);
+            printf("MA[%d][%d] %f\n", (i+1), (k+1), MA->data[i][k]);
+            printf("MA[%d][%d] %f\n", (k+1), (k+1), MA->data[k][k]);
             l->data[i][k] = MA->data[i][k] / MA->data[k][k];
+            printf("NEW L[%d][%d] %f\n", (i+1), (k+1), l->data[i][k]);
             for (int j = k + 1; j < N; j++)
             {
                 /* MA = U */
+                printf("k, i, j = %d, %d, %d\n", k, i, j);
+                printf("k, i = %d, %d\n", k, i);
+                printf("MA[%d][%d] %f\n", (i+1), (j+1), MA->data[i][j]);
+                printf("l[%d][%d] %f\n", (i+1), (k+1), l->data[i][k]);
+                printf("MA[%d][%d] %f\n", (k+1), (j+1), MA->data[k][j]);
                 MA->data[i][j] = MA->data[i][j] -
                   l->data[i][k] * MA->data[k][j];
+                printf("NEW MA[%d][%d] %f\n", (i+1), (j+1), MA->data[i][j]);
             }
         }
     }
@@ -47,7 +43,7 @@ void lu(
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < N; j++) {
-            if (MA->data[i] != 0)
+            if (i == j)
               {
                   det_inner *= MA->data[i][j];
               }
@@ -60,28 +56,19 @@ void lu(
 /* Основна функція */
 int main(int argc, char *argv[])
 {
-    const char *input_file_MA = "MA.txt";
-    const char *input_file_b = "b.txt";
+    const char *input_file_MA = "MA_2.txt";
     const char *output_file_x = "det.out";
     /* Зчитування даних в задачі 0 */
     struct Matrix* MA = read_matrix(input_file_MA);
-    struct Vector* b = read_vector(input_file_b);
     if(MA->rows != MA->cols) {
         printf("Matrix MA is not square!");
         return -1;
     }
     printf("Matrix MA\n");
     print_matrix(MA);
-    if(MA->rows != b->size) {
-        printf("Dimensions of matrix and vector don’t match!");
-        return -1;
-    }
-    printf("Vector b\n");
-    print_vector(b);
     double det;
-    lu(MA, b, &det);
+    lu(MA, &det);
     write(output_file_x, det);
     free(MA);
-    free(b);
     return 0;
 }

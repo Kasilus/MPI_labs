@@ -3,24 +3,24 @@
 
 struct Vector {
     int size;
-    double* data;
+    double data[1];
 };
 
 struct Matrix
 {
     int rows;
     int cols;
-    double** data;
+    double data[1];
 };
 
 struct Vector* read_vector(const char* filename)
 {
   FILE *pf;
   pf = fopen(filename, "r");
-  struct Vector* vector = malloc(sizeof(struct Vector));
 
-  fscanf(pf, "%d", &vector->size);
-  vector->data = (double *)malloc(vector->size * sizeof(double *));
+  int size;
+  fscanf(pf, "%d", &size);
+  struct Vector *vector = vector_alloc(size, 0.0);
 
   for(int i = 0; i < vector->size; i++)
   {
@@ -43,19 +43,17 @@ struct Matrix* read_matrix(const char* filename)
 {
   FILE *pf;
   pf = fopen(filename, "r");
-  struct Matrix* matrix = malloc(sizeof(struct Matrix));
 
-  fscanf(pf, "%d", &matrix->rows);
-  fscanf(pf, "%d", &matrix->cols);
-  matrix->data = (double **)malloc(matrix->rows * sizeof(double *));
-  for (int i=0; i<matrix->rows; i++)
-       matrix->data[i] = (double *)malloc(matrix->cols * sizeof(double));
+  int rows, cols;
+  fscanf(pf, "%d", &rows);
+  fscanf(pf, "%d", &cols);
+  struct Matrix *result = matrix_alloc(rows, cols, 0.0);
 
   for(int i = 0; i < matrix->rows; i++)
   {
      for(int j = 0; j < matrix->cols; j++)
      {
-         fscanf(pf, "%lf", &matrix->data[i][j]);
+         fscanf(pf, "%lf", &matrix->data[i * cols + j]);
      }
   }
   fclose(pf);
@@ -68,7 +66,7 @@ void print_matrix(struct Matrix* matrix)
   {
      for(int j = 0; j < matrix->cols; j++)
      {
-        printf("%f  ", matrix->data[i][j]);
+        printf("%f  ", matrix->data[i * cols + j]);
      }
      printf("\n");
   }
@@ -80,4 +78,39 @@ void write(const char* filename, double value)
   pf = fopen(filename, "w");
   fprintf(pf ,"%f ", value);
   fclose(pf);
+}
+
+struct Vector *vector_alloc(int size, double initial)
+{
+  	struct Vector *result = (struct  Vector *) malloc(sizeof(struct Vector) + (size - 1) * sizeof(double));
+  	result->size = size;
+
+  	for (int i = 0; i < size; i++)
+  	{
+  		result->data[i] = initial;
+  	}
+  	return result;
+}
+
+struct Matrix *matrix_alloc(int rows, int cols, double initial)
+{
+    struct Matrix *result = (struct  Matrix *) malloc(sizeof(struct Matrix) + (rows * cols - 1) * sizeof(double));
+    result->rows = rows;
+    result->cols = cols;
+
+  	for (int i = 0; i < rows; i++)
+  	{
+  		for (int j = 0; j < cols; j++)
+  		{
+  			result->data[i * cols + j] = initial;
+  		}
+  	}
+  	return result;
+}
+
+void fatal_error(const char *message, int errorcode)
+{
+  	printf("fatal error: code %d, %s\n", errorcode, message);
+  	fflush(stdout);
+  	MPI_Abort(MPI_COMM_WORLD, errorcode);
 }

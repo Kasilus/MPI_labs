@@ -2,7 +2,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include ”linalg.h”
+
+struct my_vector
+{
+	int size;
+	double data[1];
+};
+struct my_matrix
+{
+	int rows;
+	int cols;
+	double data[1];
+};
+
+struct my_vector *read_vector(const char *filename);
+struct my_vector *vector_alloc(int size, double initial);
+struct my_matrix *read_matrix(const char *filename);
+struct my_matrix *matrix_alloc(int rows, int cols, double initial);
+void vector_print(struct my_vector *vect);
+void matrix_print(struct my_matrix *mat);
+void fatal_error(const char *message, int errorcode);
+
+/* Точність обчислення коренів */
+const double epsilon = 0.001;
 
 /* Функція обчислення наступного наближення ітераційного процесу Якобі */
 void jacobi_iteration(
@@ -40,9 +62,9 @@ void jacobi_iteration(
 /* Основна функція */
 int main(int argc, char *argv[])
 {
-    const char *input_file_MA = ”MA.txt”;
-    const char *input_file_b = ”b.txt”;
-    const char *output_file_x = ”x.txt”;
+    const char *input_file_MA = "MA.txt";
+    const char *input_file_b = "b.txt";
+    const char *output_file_x = "x.txt";
     /* Ініціалізація MPI */
     MPI_Init(&argc, &argv);
     /* Отримання загальної кількості задач та рангу поточної задачі */
@@ -58,13 +80,18 @@ int main(int argc, char *argv[])
         MA = read_matrix(input_file_MA);
         b = read_vector(input_file_b);
         if(MA->rows != MA->cols) {
-            fatal_error(”Matrix is not square!”, 4);
+            fatal_error("Matrix is not square!", 4);
         }
         if(MA->rows != b->size) {
-            fatal_error(”Dimensions of matrix and vector don’t match!”, 5);
+            fatal_error("Dimensions of matrix and vector don’t match!", 5);
         }
         N = b->size;
     }
+    if (rank == 0){
+      matrix_print(MA);
+      vector_print(b);
+    }
+
     /* Розсилка всім задачам розмірності матриць та векторів */
     MPI_Bcast(&N, 1, MPI_INT, 0, MPI_COMM_WORLD);
     /* Виділення пам’яті для зберігання вектора вільних членів */
@@ -102,6 +129,7 @@ int main(int argc, char *argv[])
             b_norm = b->data[i] * b->data[i];
         }
         b_norm = sqrt(b_norm);
+        printf("B_NORM = %f\n", b_norm);
     }
     MPI_Bcast(&b_norm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     /* Значення критерію зупинки ітерації */
@@ -119,6 +147,8 @@ int main(int argc, char *argv[])
         * обчислюється значення норми для попереднього кроку, то результатом
         * обчислення є дані попереднього кроку */
         last_stop_criteria = residue_norm / b_norm;
+        printf("RESIDUE NORM = %f\n", residue_norm);
+        printf("LAST STOP CRITERIA = %f\n", last_stop_criteria);
         if(last_stop_criteria < epsilon)
         {
             break;
@@ -129,7 +159,7 @@ int main(int argc, char *argv[])
     /* Вивід результату */
     if(rank == 0)
     {
-        write_vector(output_file_x, oldx);
+        vector_print(oldx);
     }
     /* Повернення виділених ресурсів системі та фіналізація середовища MPI */
     free(MAh);
@@ -137,4 +167,100 @@ int main(int argc, char *argv[])
     free(newx);
     free(b);
     return MPI_Finalize();
+}
+
+struct my_vector *read_vector(const char *filename)
+{
+    FILE *vect_file = fopen(filename, "r");
+    if (vect_file == NULL)
+    {
+      fatal_error("can't open vector file", 1);
+    }
+    int size;
+    fscanf(vect_file, "%d", &size);
+
+    struct my_vector *result = vector_alloc(size, 0.0);
+    for (int i = 0; i < size; i++)
+    {
+        fscanf(vect_file, "%lf", &result->data[i]);
+    }
+    fclose(vect_file);
+    return result;
+}
+
+struct my_vector *vector_alloc(int size, double initial)
+{
+  	struct my_vector *result = (struct  my_vector *) malloc(sizeof(struct my_vector) + (size - 1) * sizeof(double));
+  	result->size = size;
+
+  	for (int i = 0; i < size; i++)
+  	{
+  		result->data[i] = initial;
+  	}
+  	return result;
+}
+
+struct my_matrix *read_matrix(const char *filename)
+{
+  	FILE *mat_file = fopen(filename, "r");
+  	if (mat_file == NULL)
+  	{
+  		fatal_error("can't open matrix file", 1);
+  	}
+  	int rows;
+  	int cols;
+  	fscanf(mat_file, "%d %d", &rows, &cols);
+
+  	struct my_matrix *result = matrix_alloc(rows, cols, 0.0);
+  	for (int i = 0; i < rows; i++)
+  	{
+  		for (int j = 0; j < cols; j++)
+  		{
+  			fscanf(mat_file, "%lf", &result->data[i * cols + j]);
+  		}
+  	}
+  	fclose(mat_file);
+  	return result;
+}
+struct my_matrix *matrix_alloc(int rows, int cols, double initial)
+{
+  	struct my_matrix *result = (struct  my_matrix *) malloc(sizeof(struct my_matrix) + (rows * cols - 1) * sizeof(double));
+  	result->rows = rows;
+  	result->cols = cols;
+
+  	for (int i = 0; i < rows; i++)
+  	{
+  		for (int j = 0; j < cols; j++)
+  		{
+  			result->data[i * cols + j] = initial;
+  		}
+  	}
+  	return result;
+}
+void vector_print(struct my_vector *vect)
+{
+    printf("VECTOR_PRINT\n");
+  	for (int i = 0; i < vect->size; i++)
+  	{
+  			printf("%5.2lf ", vect->data[i]);
+    }
+  	printf("\n");
+}
+void matrix_print(struct my_matrix *mat)
+{
+    printf("MATRIX_PRINT\n");
+  	for (int i = 0; i < mat->rows; i++)
+  	{
+  		for (int j = 0; j < mat->cols; j++)
+  		{
+  			printf("%5.2lf ", mat->data[i * mat->cols + j]);
+  		}
+  		printf("\n");
+  	}
+}
+void fatal_error(const char *message, int errorcode)
+{
+  	printf("fatal error: code %d, %s\n", errorcode, message);
+  	fflush(stdout);
+  	MPI_Abort(MPI_COMM_WORLD, errorcode);
 }
