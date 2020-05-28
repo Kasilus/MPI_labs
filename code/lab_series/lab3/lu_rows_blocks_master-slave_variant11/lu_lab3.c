@@ -26,7 +26,7 @@ void fatal_error(const char *message, int errorcode);
 /* Основна функція */
 int main(int argc, char *argv[])
 {
-		const int LOGGED_RANK = 1;
+		const int LOGGED_RANK = 0;
     const char *input_file_MA = "MA_2.txt";
     const char *output_file_x = "x.txt";
     /* Ініціалізація MPI */
@@ -115,7 +115,22 @@ int main(int argc, char *argv[])
 				 * count - кілкість елементів у буфері
 				 * root - ранг задачі, що відправляє дані
 				 *  */
-				 MPI_Bcast(current_MA, N+1, MPI_DOUBLE, step / part, MPI_COMM_WORLD);
+				 MPI_Request send_req;
+				 if (step / part == rank && rank != 0) {
+				     printf("ISEND FROM TASK %d", rank);
+				     MPI_Isend(current_MA, N+1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &send_req);
+				     MPI_Wait(&send_req, MPI_STATUS_IGNORE);
+				 }
+				 MPI_Request recv_req;
+				 if (rank == 0) {
+				    if (step / part != 0) {
+				        MPI_Irecv(current_MA, N+1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &recv_req);
+								MPI_Wait(&recv_req, MPI_STATUS_IGNORE);
+				    }
+				 }
+				 // printf("STEP%d BEFORE BCAST RANK = %d\n", step, rank);
+				 MPI_Bcast(current_MA, N+1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+				 // printf("STEP%d AFTER BCAST RANK = %d\n", step, rank);
 				 if (rank == LOGGED_RANK) {
  						printf("AFTER BCAST\n");
  						printf("MAh\n");
