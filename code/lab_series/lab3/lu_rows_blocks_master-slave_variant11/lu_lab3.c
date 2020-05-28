@@ -23,19 +23,14 @@ void vector_print(struct my_vector *vect);
 void matrix_print(struct my_matrix *mat);
 void fatal_error(const char *message, int errorcode);
 
-/* Основна функція */
 int main(int argc, char *argv[])
 {
-		const int LOGGED_RANK = 0;
     const char *input_file_MA = "MA_2.txt";
     const char *output_file_x = "x.txt";
-    /* Ініціалізація MPI */
     MPI_Init(&argc, &argv);
-    /* Отримання загальної кількості задач та рангу поточної задачі */
     int np, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &np);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    /* Зчитування даних в задачі 0 */
     struct my_matrix *MA;
     int N;
     if(rank == 0)
@@ -48,29 +43,12 @@ int main(int argc, char *argv[])
 				matrix_print(MA);
     }
 
-		/* Розсилка всім задачам розмірності матриць та векторів */
-		/* int MPI_Bcast(void *buffer, int count, MPI_Datatype, int root, MPI_Comm comm);
-		 * [IN/OUT] buffer - покажчик буферу відправки (для задачі root), для інших -
-		 * покажчик буферу прийому.
-		 * count - кілкість елементів у буфері = 1
-		 * root - ранг задачі, що відправляє дані = 0
-		 *  */
 		MPI_Bcast(&N, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    /* Обчислення частини матриці, яка буде зберігатися в кожній
-    * задачі, вважаемо що N = k*np. Виділення пам’яті для зберігання частин
-    * матриць в кожній задачі та встановлення їх початкових значень */
     int part = N / np;
     struct my_matrix *MAh = matrix_alloc(part, N, .0);
-    /* Розбиття вихідної матриці MA на частини по part рядків та розсилка частин
-    * у всі задачі. Рядки мають йти один за одним, щоб у кожній задачі опинився
-		* послідовний блок рядків. Звільнення пам’яті, виділеної для матриці МА. */
     if(rank == 0)
     {
-			  /* MPI_Scatter
-         * Розсилає всім задачам окремі незалежні частини однакового розміру вихідного буфера.
-				 * MPI_Scatter(void *sendbuf, int sendcnt, MPI_Datatype sendtype, void *recvbuf, int recvcnt, MPI_Datatype recvtype, int root, MPI_Comm comm);
-				 */
         MPI_Scatter(MA->data, N*part, MPI_DOUBLE, MAh->data, N*part, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         free(MA);
     }
@@ -79,17 +57,11 @@ int main(int argc, char *argv[])
         MPI_Scatter(NULL, 0, MPI_DATATYPE_NULL, MAh->data, N*part, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
 
-		/* Поточне значення вектору l_i */
     struct my_vector *current_MA = vector_alloc(N, .0);
-    /* Частина стовпців матриці L */
     struct my_matrix *MLh = matrix_alloc(part, N, .0);
-    /* Основний цикл ітерації (кроки) */
     for(int step = 0; step < N-1; step++)
     {
-				if (rank == LOGGED_RANK) {
-			  		printf("STEP:%d\n", step);
-				}
-				/* Формування вектору MA на відправку іншим процесорам */
+
 				int row;
 				if (rank == 0) {
 						row = step;
@@ -101,23 +73,8 @@ int main(int argc, char *argv[])
 						current_MA->data[i] = MAh->data[row * N + i];
 				}
 
-				if (rank == LOGGED_RANK) {
-						printf("BEFORE BCAST\n");
-						printf("MAh\n");
-						matrix_print(MAh);
-						printf("Current_MA\n");
-						vector_print(current_MA);
-				}
-				/* Розсилка поточних значень l_i */
-				/* int MPI_Bcast(void *buffer, int count, MPI_Datatype, int root, MPI_Comm comm);
-				 * [IN/OUT] buffer - покажчик буферу відправки (для задачі root), для інших -
-				 * покажчик буферу прийому.
-				 * count - кілкість елементів у буфері
-				 * root - ранг задачі, що відправляє дані
-				 *  */
 				 MPI_Request send_req;
 				 if (step / part == rank && rank != 0) {
-				     printf("ISEND FROM TASK %d", rank);
 				     MPI_Isend(current_MA, N+1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &send_req);
 				     MPI_Wait(&send_req, MPI_STATUS_IGNORE);
 				 }
@@ -128,21 +85,7 @@ int main(int argc, char *argv[])
 								MPI_Wait(&recv_req, MPI_STATUS_IGNORE);
 				    }
 				 }
-				 // printf("STEP%d BEFORE BCAST RANK = %d\n", step, rank);
 				 MPI_Bcast(current_MA, N+1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-				 // printf("STEP%d AFTER BCAST RANK = %d\n", step, rank);
-				 if (rank == LOGGED_RANK) {
- 						printf("AFTER BCAST\n");
- 						printf("MAh\n");
- 						matrix_print(MAh);
- 						printf("Current_MA\n");
- 						vector_print(current_MA);
- 				}
-
-				if (rank == LOGGED_RANK) {
-						printf("MLh BEFORE\n");
-						matrix_print(MLh);
-				}
 
 				if (step < (rank+1) * part - 1) {
 					int stopI = step + 1;
@@ -152,48 +95,18 @@ int main(int argc, char *argv[])
 							stopI += stopI % ((rank+1) * part);
 					}
 					int col_index = step;
-					if (rank == LOGGED_RANK) {
-							printf("STOP_I = %d\n", stopI);
-							printf("COL_INDEX = %d\n", col_index);
-					}
 					for(int i = step+1; i < stopI; i++)
 					{
-							if (rank == LOGGED_RANK) {
-									printf("step,i = %d,%d\n", step, i);
-									printf("Mlh[%d]\n", (i % part) * N + col_index);
-									printf("MAh->data[%d] = %f\n", (i % part) * N + col_index, MAh->data[(i % part) * N + col_index]);
-									printf("current_MA->data[%d] = %f\n", (i % part) * N, current_MA->data[step]);
-							}
 							MLh->data[(i % part) * N + col_index] = MAh->data[(i % part) * N + col_index] /
 			current_MA->data[step];
-							if (rank == LOGGED_RANK) {
-									printf("NEW Mlh[%d] = %f\n", (i % part) * N, MLh->data[(i % part) * N]);
-							}
 						for(int j = step+1; j < N; j++)
 						{
-								if (rank == LOGGED_RANK) {
-										printf("step,i,j = %d,%d,%d\n", step, i, j);
-										printf("MAh->data[%d] = %f\n", (i % part) * N + j, MAh->data[(i % part) * N + j]);
-										printf("current_MA->data[%d] = %f\n", j, current_MA->data[j]);
-										printf("MLh->data[%d] = %f\n", (i % part) * N + step, MLh->data[(i % part) * N + step]);
-								}
 								MAh->data[(i % part) * N + j] -= current_MA->data[j] * MLh->data[(i % part) * N + step];
-								if (rank == LOGGED_RANK) {
-										printf("NEW MAh->data[%d] = %f\n", (i % part) * N + j, MAh->data[(i % part) * N + j]);
-								}
 						}
-					}
-					if (rank == LOGGED_RANK) {
-							printf("MLh AFTER\n");
-							matrix_print(MLh);
-							printf("MAh AFTER\n");
-							matrix_print(MAh);
 					}
 				}
     }
 
-    /* Обислення добутку елементів, які знаходяться на головній діагоналі
-    * основної матриці (з урахуванням номеру стовпця в задачі) */
     double prod = 1.;
     for(int i = 0; i < part; i++)
     {
@@ -201,27 +114,22 @@ int main(int argc, char *argv[])
     	  prod *= MAh->data[row_index*part + i];
     }
 
-		/* Згортка добутків елементів головної діагоналі та вивід результату в задачі 0 */
     if(rank == 0)
     {
-				/* int MPI_Reduce(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
-MPI_Op op, int root, MPI_Comm comm) */
         MPI_Reduce(MPI_IN_PLACE, &prod, 1, MPI_DOUBLE, MPI_PROD, 0, MPI_COMM_WORLD);
-				printf("RESULT!!!\n");
-    	  printf("%lf\n", prod);
     }
     else
     {
         MPI_Reduce(&prod, NULL, 1, MPI_DOUBLE, MPI_PROD, 0, MPI_COMM_WORLD);
     }
 
-    /* Вивід результату */
     if(rank == 0)
     {
         printf("DET = %f\n", prod);
     }
-    /* Повернення виділених ресурсів системі та фіналізація середовища MPI */
     free(MAh);
+		free(current_MA);
+		free(MLh);
     return MPI_Finalize();
 }
 
