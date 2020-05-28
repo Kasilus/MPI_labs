@@ -90,14 +90,14 @@ int main(int argc, char *argv[])
 			  		printf("STEP:%d\n", step);
 				}
 				/* Формування вектору MA на відправку іншим процесорам */
+				int row;
+				if (rank == 0) {
+						row = step;
+				} else {
+						row = step % rank;
+				}
 				for(int i = 0; i < N; i++)
 				{
-						int row;
-						if (rank == 0) {
-								row = step;
-						} else {
-								row = step % (rank+1);
-						}
 						current_MA->data[i] = MAh->data[row * N + i];
 				}
 
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 				 * count - кілкість елементів у буфері
 				 * root - ранг задачі, що відправляє дані
 				 *  */
-				 MPI_Bcast(current_MA, N+1, MPI_DOUBLE, step / np, MPI_COMM_WORLD);
+				 MPI_Bcast(current_MA, N+1, MPI_DOUBLE, step / part, MPI_COMM_WORLD);
 				 if (rank == LOGGED_RANK) {
  						printf("AFTER BCAST\n");
  						printf("MAh\n");
@@ -130,11 +130,11 @@ int main(int argc, char *argv[])
 				}
 
 				if (step < (rank+1) * part - 1) {
-					int stopI = (step + 1);
-					if ((step+1) == (rank+1) * part - 1) {
-							stopI++;
-					} else {
+					int stopI = step + 1;
+					if ((((rank+1) * part) / stopI) > 0) {
 							stopI += part;
+					} else {
+							stopI += stopI % ((rank+1) * part);
 					}
 					int col_index = step;
 					if (rank == LOGGED_RANK) {
