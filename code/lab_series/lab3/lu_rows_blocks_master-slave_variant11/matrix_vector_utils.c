@@ -1,17 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-struct Vector {
-    int size;
-    double data[1];
-};
-
-struct Matrix
-{
-    int rows;
-    int cols;
-    double data[1];
-};
+#include "matrix_vector_utils.h"
 
 struct Vector *vector_alloc(int size, double init)
 {
@@ -98,12 +87,4 @@ void print_matrix(struct Matrix *matrix)
      }
      printf("\n");
   }
-}
-
-void write(const char* filename, double value)
-{
-  FILE *pf;
-  pf = fopen(filename, "w");
-  fprintf(pf ,"%f ", value);
-  fclose(pf);
 }

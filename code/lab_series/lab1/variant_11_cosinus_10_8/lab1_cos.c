@@ -4,13 +4,13 @@
 #include <stdbool.h>
 #include <math.h>
 
-const double EPSILON = 1E-100;
+const double EPSILON = 1E-8;
 const int VALUE_TAG = 1;
 const int TERM_NUMBER_TAG = 2;
 const int TERM_TAG = 3;
 const int BREAK_TAG = 4;
 const char *input_file_name = "in.txt";
-const char *output_file_name = "out.txt";
+const char *output_file_name = "out.out";
 
 double factorial(int value)
 {
@@ -35,7 +35,7 @@ double factorial(int value)
 
 double calc_series_term(int term_number, double value)
 {
-  return pow(value, term_number)/factorial(term_number);
+  return pow(-1, term_number) * pow(value, 2 * term_number) / factorial(2 * term_number);
 }
 
 int main(int argc, char *argv[])
@@ -45,9 +45,8 @@ int main(int argc, char *argv[])
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   int np;
   MPI_Comm_size(MPI_COMM_WORLD, &np);
-  double exponent;
+  double cosinus;
 
-  /* read from file in task = 0 */
   if (rank == 0)
   {
     FILE *input_file = fopen(input_file_name, "r");
@@ -57,21 +56,20 @@ int main(int argc, char *argv[])
       MPI_Abort(MPI_COMM_WORLD, 1);
       return 1;
     }
-    fscanf(input_file, "%lf", &exponent);
+    fscanf(input_file, "%lf", &cosinus);
     fclose(input_file);
   }
 
-  /* if task = 0, send degree of exponent, else recv it */
   if (rank == 0)
   {
     for (int i = 1; i < np; i++)
     {
-      MPI_Send(&exponent, 1, MPI_DOUBLE, i, VALUE_TAG, MPI_COMM_WORLD);
+      MPI_Send(&cosinus, 1, MPI_DOUBLE, i, VALUE_TAG, MPI_COMM_WORLD);
     }
   }
   else
   {
-    MPI_Recv(&exponent, 1, MPI_DOUBLE, 0, VALUE_TAG, MPI_COMM_WORLD,
+    MPI_Recv(&cosinus, 1, MPI_DOUBLE, 0, VALUE_TAG, MPI_COMM_WORLD,
     MPI_STATUS_IGNORE);
   }
 
@@ -98,13 +96,13 @@ int main(int argc, char *argv[])
       MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
-    double term = calc_series_term(term_number, exponent);
+    double term = calc_series_term(term_number, cosinus);
     int need_break = false;
     if (rank == 0)
     {
       double current_term = term;
       sum += current_term;
-      if (current_term < EPSILON)
+      if (fabs(current_term) < EPSILON)
       {
         need_break = true;
       }
@@ -113,7 +111,7 @@ int main(int argc, char *argv[])
         MPI_Recv(&current_term, 1, MPI_DOUBLE, i, TERM_TAG,
         MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         sum += current_term;
-        if (current_term < EPSILON)
+        if (fabs(current_term) < EPSILON)
         {
           need_break = true;
           break;
@@ -144,6 +142,7 @@ int main(int argc, char *argv[])
       fprintf(stderr, "Can't open output file!\n\n");
       MPI_Abort(MPI_COMM_WORLD, 2);
     }
+    printf("%.15lf\n", sum);
     fprintf(output_file, "%.15lf\n", sum);
   }
 MPI_Finalize();

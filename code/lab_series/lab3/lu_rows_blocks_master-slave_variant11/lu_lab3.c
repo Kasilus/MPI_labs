@@ -10,9 +10,7 @@ int main(int argc, char *argv[])
 {
     const char *input_file_MA = "MA.txt";
     const char *output_file_x = "det.out";
-		printf("A");
     MPI_Init(&argc, &argv);
-		printf("B");
     int np, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &np);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
