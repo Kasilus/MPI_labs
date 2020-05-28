@@ -2,36 +2,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "matrix_vector_utils.h"
 
-struct my_vector
-{
-	int size;
-	double data[1];
-};
-struct my_matrix
-{
-	int rows;
-	int cols;
-	double data[1];
-};
-
-struct my_vector *read_vector(const char *filename);
-struct my_vector *vector_alloc(int size, double initial);
-struct my_matrix *read_matrix(const char *filename);
-struct my_matrix *matrix_alloc(int rows, int cols, double initial);
-void vector_print(struct my_vector *vect);
-void matrix_print(struct my_matrix *mat);
 void fatal_error(const char *message, int errorcode);
 
 int main(int argc, char *argv[])
 {
-    const char *input_file_MA = "MA_2.txt";
-    const char *output_file_x = "x.txt";
+    const char *input_file_MA = "MA.txt";
+    const char *output_file_x = "det.out";
+		printf("A");
     MPI_Init(&argc, &argv);
+		printf("B");
     int np, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &np);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    struct my_matrix *MA;
+    struct Matrix *MA;
     int N;
     if(rank == 0)
     {
@@ -40,13 +25,13 @@ int main(int argc, char *argv[])
             fatal_error("Matrix is not square!", 4);
         }
         N = MA->rows;
-				matrix_print(MA);
+				print_matrix(MA);
     }
 
 		MPI_Bcast(&N, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     int part = N / np;
-    struct my_matrix *MAh = matrix_alloc(part, N, .0);
+    struct Matrix *MAh = matrix_alloc(part, N, .0);
     if(rank == 0)
     {
         MPI_Scatter(MA->data, N*part, MPI_DOUBLE, MAh->data, N*part, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -57,8 +42,8 @@ int main(int argc, char *argv[])
         MPI_Scatter(NULL, 0, MPI_DATATYPE_NULL, MAh->data, N*part, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
 
-    struct my_vector *current_MA = vector_alloc(N, .0);
-    struct my_matrix *MLh = matrix_alloc(part, N, .0);
+    struct Vector *current_MA = vector_alloc(N, .0);
+    struct Matrix *MLh = matrix_alloc(part, N, .0);
     for(int step = 0; step < N-1; step++)
     {
 
@@ -133,93 +118,6 @@ int main(int argc, char *argv[])
     return MPI_Finalize();
 }
 
-struct my_vector *read_vector(const char *filename)
-{
-    FILE *vect_file = fopen(filename, "r");
-    if (vect_file == NULL)
-    {
-      fatal_error("can't open vector file", 1);
-    }
-    int size;
-    fscanf(vect_file, "%d", &size);
-
-    struct my_vector *result = vector_alloc(size, 0.0);
-    for (int i = 0; i < size; i++)
-    {
-        fscanf(vect_file, "%lf", &result->data[i]);
-    }
-    fclose(vect_file);
-    return result;
-}
-
-struct my_vector *vector_alloc(int size, double initial)
-{
-  	struct my_vector *result = (struct  my_vector *) malloc(sizeof(struct my_vector) + (size - 1) * sizeof(double));
-  	result->size = size;
-
-  	for (int i = 0; i < size; i++)
-  	{
-  		result->data[i] = initial;
-  	}
-  	return result;
-}
-
-struct my_matrix *read_matrix(const char *filename)
-{
-  	FILE *mat_file = fopen(filename, "r");
-  	if (mat_file == NULL)
-  	{
-  		fatal_error("can't open matrix file", 1);
-  	}
-  	int rows;
-  	int cols;
-  	fscanf(mat_file, "%d %d", &rows, &cols);
-
-  	struct my_matrix *result = matrix_alloc(rows, cols, 0.0);
-  	for (int i = 0; i < rows; i++)
-  	{
-  		for (int j = 0; j < cols; j++)
-  		{
-  			fscanf(mat_file, "%lf", &result->data[i * cols + j]);
-  		}
-  	}
-  	fclose(mat_file);
-  	return result;
-}
-struct my_matrix *matrix_alloc(int rows, int cols, double initial)
-{
-  	struct my_matrix *result = (struct  my_matrix *) malloc(sizeof(struct my_matrix) + (rows * cols - 1) * sizeof(double));
-  	result->rows = rows;
-  	result->cols = cols;
-
-  	for (int i = 0; i < rows; i++)
-  	{
-  		for (int j = 0; j < cols; j++)
-  		{
-  			result->data[i * cols + j] = initial;
-  		}
-  	}
-  	return result;
-}
-void vector_print(struct my_vector *vect)
-{
-  	for (int i = 0; i < vect->size; i++)
-  	{
-  			printf("%5.2lf ", vect->data[i]);
-    }
-  	printf("\n");
-}
-void matrix_print(struct my_matrix *mat)
-{
-  	for (int i = 0; i < mat->rows; i++)
-  	{
-  		for (int j = 0; j < mat->cols; j++)
-  		{
-  			printf("%5.2lf ", mat->data[i * mat->cols + j]);
-  		}
-  		printf("\n");
-  	}
-}
 void fatal_error(const char *message, int errorcode)
 {
   	printf("fatal error: code %d, %s\n", errorcode, message);

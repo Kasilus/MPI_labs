@@ -13,7 +13,35 @@ struct Matrix
     double data[1];
 };
 
-struct Vector* read_vector(const char* filename)
+struct Vector *vector_alloc(int size, double init)
+{
+  	struct Vector *vector = (struct  Vector *) malloc(sizeof(struct Vector) + (size - 1) * sizeof(double));
+  	vector->size = size;
+
+  	for (int i = 0; i < size; i++)
+  	{
+  		vector->data[i] = init;
+  	}
+  	return vector;
+}
+
+struct Matrix *matrix_alloc(int rows, int cols, double init)
+{
+    struct Matrix *matrix = (struct Matrix *) malloc(sizeof(struct Matrix) + (rows * cols - 1) * sizeof(double));
+    matrix->rows = rows;
+    matrix->cols = cols;
+
+  	for (int i = 0; i < rows; i++)
+  	{
+  		for (int j = 0; j < cols; j++)
+  		{
+  			matrix->data[i * cols + j] = init;
+  		}
+  	}
+  	return matrix;
+}
+
+struct Vector *read_vector(const char *filename)
 {
   FILE *pf;
   pf = fopen(filename, "r");
@@ -30,7 +58,7 @@ struct Vector* read_vector(const char* filename)
   return vector;
 }
 
-void print_vector(struct Vector* vector)
+void print_vector(struct Vector *vector)
 {
   for(int i = 0; i < vector->size; i++)
   {
@@ -39,7 +67,7 @@ void print_vector(struct Vector* vector)
   printf("\n");
 }
 
-struct Matrix* read_matrix(const char* filename)
+struct Matrix *read_matrix(const char *filename)
 {
   FILE *pf;
   pf = fopen(filename, "r");
@@ -47,7 +75,7 @@ struct Matrix* read_matrix(const char* filename)
   int rows, cols;
   fscanf(pf, "%d", &rows);
   fscanf(pf, "%d", &cols);
-  struct Matrix *result = matrix_alloc(rows, cols, 0.0);
+  struct Matrix *matrix = matrix_alloc(rows, cols, 0.0);
 
   for(int i = 0; i < matrix->rows; i++)
   {
@@ -60,13 +88,13 @@ struct Matrix* read_matrix(const char* filename)
   return matrix;
 }
 
-void print_matrix(struct Matrix* matrix)
+void print_matrix(struct Matrix *matrix)
 {
   for(int i = 0; i < matrix->rows; i++)
   {
      for(int j = 0; j < matrix->cols; j++)
      {
-        printf("%f  ", matrix->data[i * cols + j]);
+        printf("%f  ", matrix->data[i * matrix->cols + j]);
      }
      printf("\n");
   }
@@ -78,39 +106,4 @@ void write(const char* filename, double value)
   pf = fopen(filename, "w");
   fprintf(pf ,"%f ", value);
   fclose(pf);
-}
-
-struct Vector *vector_alloc(int size, double initial)
-{
-  	struct Vector *result = (struct  Vector *) malloc(sizeof(struct Vector) + (size - 1) * sizeof(double));
-  	result->size = size;
-
-  	for (int i = 0; i < size; i++)
-  	{
-  		result->data[i] = initial;
-  	}
-  	return result;
-}
-
-struct Matrix *matrix_alloc(int rows, int cols, double initial)
-{
-    struct Matrix *result = (struct  Matrix *) malloc(sizeof(struct Matrix) + (rows * cols - 1) * sizeof(double));
-    result->rows = rows;
-    result->cols = cols;
-
-  	for (int i = 0; i < rows; i++)
-  	{
-  		for (int j = 0; j < cols; j++)
-  		{
-  			result->data[i * cols + j] = initial;
-  		}
-  	}
-  	return result;
-}
-
-void fatal_error(const char *message, int errorcode)
-{
-  	printf("fatal error: code %d, %s\n", errorcode, message);
-  	fflush(stdout);
-  	MPI_Abort(MPI_COMM_WORLD, errorcode);
 }
