@@ -15,6 +15,11 @@ int main(int argc, char *argv[])
     int np, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &np);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+		double start, end;
+	  MPI_Barrier(MPI_COMM_WORLD);
+	  start = MPI_Wtime();
+
     struct Matrix *MA;
     int N;
     if(rank == 0)
@@ -24,7 +29,7 @@ int main(int argc, char *argv[])
             fatal_error("Matrix is not square!", 4);
         }
         N = MA->rows;
-				print_matrix(MA);
+				// print_matrix(MA);
     }
 
     MPI_Bcast(&N, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -101,11 +106,19 @@ int main(int argc, char *argv[])
 		MPI_Allreduce(MPI_IN_PLACE, &prod, 1, MPI_DOUBLE, MPI_PROD, MPI_COMM_WORLD);
     if(rank == 0)
     {
-			printf("DET = %f\n", prod);
+			// printf("DET = %f\n", prod);
     }
     MPI_Type_free(&matrix_columns);
     MPI_Type_free(&vector_struct);
-    return MPI_Finalize();
+
+		MPI_Barrier(MPI_COMM_WORLD);
+		end = MPI_Wtime();
+
+    MPI_Finalize();
+
+		if (rank == 0) {
+      printf("Runtime = %f\n", end-start);
+		}
 }
 
 void fatal_error(const char *message, int errorcode)
